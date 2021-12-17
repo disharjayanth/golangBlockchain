@@ -65,7 +65,6 @@ func NewStateFromDisk() (*State, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error while opening txdb file: %w", err)
 	}
-	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 
