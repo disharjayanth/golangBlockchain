@@ -45,7 +45,7 @@ func NewStateFromDisk() (*State, error) {
 	// Current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch current working directory %w", err)
+		return nil, fmt.Errorf("unable to fetch current working directory: %w", err)
 	}
 
 	genFilePath := filepath.Join(cwd, "database", "genesisdb.json")
