@@ -139,3 +139,7 @@ func (s *State) Persist() error {
 
 	return nil
 }
+
+func (s *State) Close() error {
+	return s.dbFile.Close()
+}
