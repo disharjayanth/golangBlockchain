@@ -60,7 +60,7 @@ func txAddCmd() *cobra.Command {
 			}
 
 			// Flush the mempool tx to disk
-			err = state.Persist()
+			_, err = state.Persist()
 			if err != nil {
 				fmt.Fprintln(os.Stdout, err)
 				os.Exit(1)

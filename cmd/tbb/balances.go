@@ -19,7 +19,7 @@ var balancesListCmd = &cobra.Command{
 		}
 		defer state.Close()
 
-		fmt.Println("Account Balances")
+		fmt.Printf("Account Balances at: %x\n", state.LatestSnapShot())
 		fmt.Println("----------------")
 		fmt.Println("")
 

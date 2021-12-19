@@ -2,11 +2,15 @@ package database
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
+
+type Snapshot [32]byte
 
 type Account string
 
@@ -38,7 +42,8 @@ type State struct {
 	Balances  map[Account]uint
 	txMempool []Tx
 
-	dbFile *os.File
+	dbFile   *os.File
+	snapshot Snapshot
 }
 
 func NewStateFromDisk() (*State, error) {
@@ -68,7 +73,7 @@ func NewStateFromDisk() (*State, error) {
 
 	scanner := bufio.NewScanner(f)
 
-	state := &State{balances, make([]Tx, 0), f}
+	state := &State{balances, make([]Tx, 0), f, Snapshot{}}
 
 	// Iterate over each line in tx.db file
 	for scanner.Scan() {
@@ -85,6 +90,11 @@ func NewStateFromDisk() (*State, error) {
 		if err = state.apply(tx); err != nil {
 			return nil, fmt.Errorf("error while update state: %w", err)
 		}
+	}
+
+	err = state.doSnapShot()
+	if err != nil {
+		return nil, fmt.Errorf("error while creating snapshot at NewStateFromDisk func: %w", err)
 	}
 
 	return state, nil
@@ -116,7 +126,7 @@ func (s *State) Add(tx Tx) error {
 	return nil
 }
 
-func (s *State) Persist() error {
+func (s *State) Persist() (Snapshot, error) {
 	// Make a copy of mempool because the s.txMempool will be modified
 	// in the loop
 	mempool := make([]Tx, len(s.txMempool))
@@ -125,20 +135,48 @@ func (s *State) Persist() error {
 	for i := 0; i < len(mempool); i++ {
 		txJSON, err := json.Marshal(mempool[i])
 		if err != nil {
-			return fmt.Errorf("error while marshalling tx struct to tx json: %w", err)
+			return Snapshot{}, fmt.Errorf("error while marshalling tx struct to tx json: %w", err)
 		}
 
+		fmt.Println("Persisting new tx into disk")
+		fmt.Printf("\t%s\n", txJSON)
 		if _, err = s.dbFile.Write(append(txJSON, '\n')); err != nil {
-			return fmt.Errorf("error while writing tx to tx json file: %w", err)
+			return Snapshot{}, fmt.Errorf("error while writing tx to tx json file: %w", err)
 		}
+
+		err = s.doSnapShot()
+		if err != nil {
+			return Snapshot{}, fmt.Errorf("error while creating snapshot(hashing contenys of file): %w", err)
+		}
+		fmt.Printf("New DB Snapshot: %x\n", s.snapshot)
 
 		// Remove the Tx written to a file from the mempool
-		s.txMempool = s.txMempool[1:]
+		s.txMempool = append(s.txMempool[:i], s.txMempool[i+1:]...)
 	}
 
-	return nil
+	return s.snapshot, nil
 }
 
 func (s *State) Close() error {
 	return s.dbFile.Close()
+}
+
+func (s *State) doSnapShot() error {
+	// Re-read the whole file from the first byte
+	_, err := s.dbFile.Seek(0, 0)
+	if err != nil {
+		return fmt.Errorf("error while file seek: %w", err)
+	}
+
+	txData, err := ioutil.ReadAll(s.dbFile)
+	if err != nil {
+		return fmt.Errorf("error while reading tx file: %w", err)
+	}
+	s.snapshot = sha256.Sum256(txData)
+
+	return nil
+}
+
+func (s *State) LatestSnapShot() Snapshot {
+	return s.snapshot
 }
