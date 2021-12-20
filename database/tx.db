@@ -1,11 +1,2 @@
-{"from":"andrej","to":"andrej","value":3,"data":""}
-{"from":"andrej","to":"andrej","value":700,"data":"reward"}
-{"from":"andrej","to":"babayaga","value":2000,"data":""}
-{"from":"andrej","to":"andrej","value":100,"data":"reward"}
-{"from":"babayaga","to":"andrej","value":1,"data":""}
-{"from":"babayaga","to":"caesar","value":1000,"data":""}
-{"from":"babayaga","to":"andrej","value":50,"data":""}
-{"from":"andrej","to":"andrej","value":100,"data":"reward"}
-{"from":"andrej","to":"andrej","value":100,"data":"reward"}
-{"from":"andrej","to":"andrej","value":100,"data":"reward"}
-{"from":"andrej","to":"andrej","value":100,"data":"reward"}
+{"hash":"1fb2c826c3caf98bc59e885f783a2801445721cc9a078a905f156c5cdaf291d6","block":{"Header":{"Parent":"0000000000000000000000000000000000000000000000000000000000000000","Time":1640005902},"Txs":[{"From":"andrej","To":"andrej","Value":3,"Data":""},{"From":"andrej","To":"andrej","Value":700,"Data":"reward"}]}}
+{"hash":"78f377c05ccfe87e5ae6fe16dcb4fdf05a41622fc32362f93219040ccb8447e0","block":{"Header":{"Parent":"1fb2c826c3caf98bc59e885f783a2801445721cc9a078a905f156c5cdaf291d6","Time":1640005902},"Txs":[{"From":"andrej","To":"babayaga","Value":2000,"Data":""},{"From":"andrej","To":"andrej","Value":100,"Data":"reward"},{"From":"babayaga","To":"andrej","Value":1,"Data":""},{"From":"babayaga","To":"caesar","Value":1000,"Data":""},{"From":"babayaga","To":"andrej","Value":50,"Data":""},{"From":"andrej","To":"andrej","Value":600,"Data":"reward"}]}}

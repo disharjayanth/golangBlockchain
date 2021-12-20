@@ -53,7 +53,7 @@ func txAddCmd() *cobra.Command {
 			defer state.Close()
 
 			// Add tx to in memory slice (pool)
-			err = state.Add(tx)
+			err = state.Addtx(tx)
 			if err != nil {
 				fmt.Fprintln(os.Stdout, err)
 				os.Exit(1)
