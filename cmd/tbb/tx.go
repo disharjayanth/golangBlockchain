@@ -39,13 +39,14 @@ func txAddCmd() *cobra.Command {
 			to, _ := cmd.Flags().GetString(flagTo)
 			value, _ := cmd.Flags().GetUint(flagValue)
 			data, _ := cmd.Flags().GetString(flagData)
+			dataDir, _ := cmd.Flags().GetString(flagDataDir)
 
 			fromAcc := database.NewAccount(from)
 			toAcc := database.NewAccount(to)
 
 			tx := database.NewTx(fromAcc, toAcc, value, data)
 
-			state, err := database.NewStateFromDisk()
+			state, err := database.NewStateFromDisk(dataDir)
 			if err != nil {
 				fmt.Fprintln(os.Stdout, err)
 				os.Exit(1)
@@ -69,6 +70,8 @@ func txAddCmd() *cobra.Command {
 			fmt.Println("Tx successfully added to the ledger!")
 		},
 	}
+
+	addDefaultRequiredFlags(cmd)
 
 	cmd.Flags().String(flagFrom, "", "From what account to send tokens")
 	cmd.MarkFlagRequired(flagFrom)

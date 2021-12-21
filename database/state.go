@@ -49,19 +49,19 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 
 	for scanner.Scan() {
 		if err := scanner.Err(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error while scanning block.db file: %w", err)
 		}
 
 		blockJSON := scanner.Bytes()
 		var blockFS BlockFS
 		err = json.Unmarshal(blockJSON, &blockFS)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error while unmarshalling JSON to blockFS struct: %w", err)
 		}
 
 		err = state.applyBlock(blockFS.Value)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error while calculating balances: %w", err)
 		}
 
 		state.latestBlockHash = blockFS.Key

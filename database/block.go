@@ -15,7 +15,7 @@ func (h Hash) MarshalText() ([]byte, error) {
 
 func (h Hash) UnmarshalText(data []byte) error {
 	_, err := hex.Decode(h[:], data)
-	return fmt.Errorf("error while decoding from hexdecimal to slice of byte: %w", err)
+	return err
 }
 
 type BlockHeader struct {

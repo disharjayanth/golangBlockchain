@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -36,15 +37,15 @@ func initDataDirIfNotExists(dataDir string) error {
 	}
 
 	if err := os.MkdirAll(getDatabaseDirPath(dataDir), os.ModePerm); err != nil {
-		return err
+		return fmt.Errorf("error while creating database directory: %w", err)
 	}
 
-	if err := writeGenesisToDisk(getDatabaseDirPath(dataDir)); err != nil {
-		return err
+	if err := writeGenesisToDisk(getGenesisJSONFilePath(dataDir)); err != nil {
+		return fmt.Errorf("error while writing genesis block to file: %w", err)
 	}
 
-	if err := writeEmptyBlockDBToDisk(dataDir); err != nil {
-		return err
+	if err := writeEmptyBlockDBToDisk(getBlockDBFilePath(dataDir)); err != nil {
+		return fmt.Errorf("error while creating block file: %w", err)
 	}
 
 	return nil
