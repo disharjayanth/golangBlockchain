@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -17,55 +16,68 @@ type State struct {
 	latestBlockHash Hash
 }
 
-func NewStateFromDisk() (*State, error) {
-	// Current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch current working directory: %w", err)
+func NewStateFromDisk(dataDir string) (*State, error) {
+	if err := initDataDirIfNotExists(dataDir); err != nil {
+		return nil, err
 	}
 
-	genFilePath := filepath.Join(cwd, "database", "genesisdb.json")
-	genesis, err := LoadGenesis(genFilePath)
+	gen, err := LoadGenesis(getGenesisJSONFilePath(dataDir))
 	if err != nil {
-		return nil, fmt.Errorf("error while loading genesis block: %w", err)
+		return nil, err
 	}
 
 	balances := make(map[Account]uint)
 
-	for account, balance := range genesis.Balances {
+	for account, balance := range gen.Balances {
 		balances[account] = balance
 	}
 
-	txDBFilePath := filepath.Join(cwd, "database", "tx.db")
-	f, err := os.OpenFile(txDBFilePath, os.O_APPEND|os.O_RDWR, 0600)
+	f, err := os.OpenFile(getBlockDBFilePath(dataDir), os.O_APPEND|os.O_RDWR, 0600)
 	if err != nil {
-		return nil, fmt.Errorf("error while opening txdb file: %w", err)
+		return nil, err
 	}
 
 	scanner := bufio.NewScanner(f)
 
-	state := &State{balances, make([]Tx, 0), f, Hash{}}
+	state := &State{
+		Balances:  balances,
+		txMempool: make([]Tx, 0),
 
-	// Iterate over each line in tx.db file
+		dbFile:          f,
+		latestBlockHash: Hash{},
+	}
+
 	for scanner.Scan() {
-		if err = scanner.Err(); err != nil {
-			return nil, fmt.Errorf("error while scanning tx.db transactions: %w", err)
+		if err := scanner.Err(); err != nil {
+			return nil, err
 		}
 
-		// convert tx json into tx struct
-		var blockFs BlockFS
-		json.Unmarshal(scanner.Bytes(), &blockFs)
-
-		// Rebuild the state (user balances)
-		// as a series of events
-		if err = state.AddBlock(blockFs.Value); err != nil {
-			return nil, fmt.Errorf("error while update state: %w", err)
+		blockJSON := scanner.Bytes()
+		var blockFS BlockFS
+		err = json.Unmarshal(blockJSON, &blockFS)
+		if err != nil {
+			return nil, err
 		}
 
-		state.latestBlockHash = blockFs.Key
+		err = state.applyBlock(blockFS.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		state.latestBlockHash = blockFS.Key
 	}
 
 	return state, nil
+}
+
+func (s *State) applyBlock(b Block) error {
+	for _, tx := range b.Txs {
+		if err := s.apply(tx); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *State) apply(tx Tx) error {

@@ -7,8 +7,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const flagDataDir = "datadir"
+
 func incorrectUsageErr() error {
 	return fmt.Errorf("incorrect usage")
+}
+
+func addDefaultRequiredFlags(cmd *cobra.Command) {
+	cmd.Flags().String(flagDataDir, "", "Absolute path to the node dat dir where DB will/is stored")
+	cmd.MarkFlagRequired(flagDataDir)
 }
 
 func main() {
