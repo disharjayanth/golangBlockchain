@@ -22,6 +22,9 @@ func main() {
 	tbbCmd := &cobra.Command{
 		Use:   "tbb",
 		Short: "The Blockchain Bar CLI",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return incorrectUsageErr()
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 
 		},
