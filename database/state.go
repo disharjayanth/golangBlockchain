@@ -71,7 +71,7 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 }
 
 func (s *State) applyBlock(b Block) error {
-	for _, tx := range b.Txs {
+	for _, tx := range b.TXs {
 		if err := s.apply(tx); err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func (s *State) apply(tx Tx) error {
 }
 
 func (s *State) AddBlock(b Block) error {
-	for _, tx := range b.Txs {
+	for _, tx := range b.TXs {
 		if err := s.Addtx(tx); err != nil {
 			return err
 		}

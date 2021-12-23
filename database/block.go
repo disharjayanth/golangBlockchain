@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 )
 
 type Hash [32]byte
@@ -13,19 +12,19 @@ func (h Hash) MarshalText() ([]byte, error) {
 	return []byte(hex.EncodeToString(h[:])), nil
 }
 
-func (h Hash) UnmarshalText(data []byte) error {
+func (h *Hash) UnmarshalText(data []byte) error {
 	_, err := hex.Decode(h[:], data)
 	return err
 }
 
-type BlockHeader struct {
-	Parent Hash
-	Time   uint64
+type Block struct {
+	Header BlockHeader `json:"header"`
+	TXs    []Tx        `json:"payload"`
 }
 
-type Block struct {
-	Header BlockHeader
-	Txs    []Tx
+type BlockHeader struct {
+	Parent Hash   `json:"parent"`
+	Time   uint64 `json:"time"`
 }
 
 type BlockFS struct {
@@ -33,21 +32,15 @@ type BlockFS struct {
 	Value Block `json:"block"`
 }
 
-func NewBlock(parent Hash, time uint64, tx []Tx) Block {
-	return Block{
-		Header: BlockHeader{
-			Parent: parent,
-			Time:   time,
-		},
-		Txs: tx,
-	}
+func NewBlock(parent Hash, time uint64, txs []Tx) Block {
+	return Block{BlockHeader{parent, time}, txs}
 }
 
 func (b Block) Hash() (Hash, error) {
-	jsonBlock, err := json.Marshal(b)
+	blockJson, err := json.Marshal(b)
 	if err != nil {
-		return Hash{}, fmt.Errorf("error while mashalling Block struct to json: %w", err)
+		return Hash{}, err
 	}
 
-	return sha256.Sum256(jsonBlock), nil
+	return sha256.Sum256(blockJson), nil
 }
