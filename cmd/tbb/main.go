@@ -31,6 +31,7 @@ func main() {
 	}
 
 	tbbCmd.AddCommand(versionCmd)
+	tbbCmd.AddCommand(runCmd())
 	tbbCmd.AddCommand(balancesCmd())
 	tbbCmd.AddCommand(txCmd())
 
