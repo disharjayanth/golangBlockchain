@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/disharjayanth/golangBlockchain/fs"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +19,11 @@ func addDefaultRequiredFlags(cmd *cobra.Command) {
 	cmd.MarkFlagRequired(flagDataDir)
 }
 
+func getDataDirFromCmd(cmd *cobra.Command) string {
+	dataDir, _ := cmd.Flags().GetString(flagDataDir)
+	return fs.ExpandPath(dataDir)
+}
+
 func main() {
 	tbbCmd := &cobra.Command{
 		Use:   "tbb",
@@ -30,10 +36,10 @@ func main() {
 		},
 	}
 
+	tbbCmd.AddCommand(migrateCmd())
 	tbbCmd.AddCommand(versionCmd)
 	tbbCmd.AddCommand(runCmd())
 	tbbCmd.AddCommand(balancesCmd())
-	tbbCmd.AddCommand(txCmd())
 
 	if err := tbbCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stdout, err)

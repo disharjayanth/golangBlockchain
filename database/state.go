@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
+	"reflect"
 )
 
 type State struct {
 	Balances  map[Account]uint
 	txMempool []Tx
 
-	dbFile          *os.File
+	dbFile *os.File
+
+	latestBlock     Block
 	latestBlockHash Hash
+	hasGenesisBlock bool
 }
 
 func NewStateFromDisk(dataDir string) (*State, error) {
@@ -44,7 +47,9 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 		txMempool: make([]Tx, 0),
 
 		dbFile:          f,
+		latestBlock:     Block{},
 		latestBlockHash: Hash{},
+		hasGenesisBlock: false,
 	}
 
 	for scanner.Scan() {
@@ -53,26 +58,34 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 		}
 
 		blockJSON := scanner.Bytes()
+
+		if len(blockJSON) == 0 {
+			break
+		}
+
 		var blockFS BlockFS
 		err = json.Unmarshal(blockJSON, &blockFS)
 		if err != nil {
 			return nil, fmt.Errorf("error while unmarshalling JSON to blockFS struct: %w", err)
 		}
 
-		err = state.applyBlock(blockFS.Value)
+		err = applyTXs(blockFS.Value.TXs, state)
 		if err != nil {
 			return nil, fmt.Errorf("error while calculating balances: %w", err)
 		}
 
+		state.latestBlock = blockFS.Value
 		state.latestBlockHash = blockFS.Key
+		state.hasGenesisBlock = true
 	}
 
 	return state, nil
 }
 
-func (s *State) applyBlock(b Block) error {
-	for _, tx := range b.TXs {
-		if err := s.apply(tx); err != nil {
+func (s *State) AddBlocks(blocks []Block) error {
+	for _, b := range blocks {
+		_, err := s.AddBlock(b)
+		if err != nil {
 			return err
 		}
 	}
@@ -80,71 +93,115 @@ func (s *State) applyBlock(b Block) error {
 	return nil
 }
 
-func (s *State) apply(tx Tx) error {
-	if tx.IsReward() {
-		s.Balances[tx.To] = s.Balances[tx.To] + tx.Value
-		return nil
-	}
-
-	if s.Balances[tx.From] < tx.Value {
-		return fmt.Errorf("insufficient balance")
-	}
-
-	s.Balances[tx.From] = s.Balances[tx.From] - tx.Value
-	s.Balances[tx.To] = s.Balances[tx.To] + tx.Value
-
-	return nil
-}
-
-func (s *State) AddBlock(b Block) error {
-	for _, tx := range b.TXs {
-		if err := s.Addtx(tx); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *State) Addtx(tx Tx) error {
-	if err := s.apply(tx); err != nil {
-		return fmt.Errorf("error while adding transaction to state in Add func: %w", err)
-	}
-
-	s.txMempool = append(s.txMempool, tx)
-
-	return nil
-}
-
-func (s *State) Persist() (Hash, error) {
-	block := NewBlock(s.latestBlockHash, uint64(time.Now().Unix()), s.txMempool)
-	blockHash, err := block.Hash()
+func (s *State) AddBlock(b Block) (Hash, error) {
+	pendingState := s.copy()
+	err := applyBlock(b, pendingState)
 	if err != nil {
 		return Hash{}, err
 	}
 
-	blockFs := BlockFS{
-		Key:   blockHash,
-		Value: block,
+	// block is verfied and ready to be added to blockchain
+	blockHash, err := b.Hash()
+	if err != nil {
+		return Hash{}, err
 	}
 
-	blockFsJSON, err := json.Marshal(blockFs)
+	blockFS := BlockFS{
+		Key:   blockHash,
+		Value: b,
+	}
+
+	blockFSJSON, err := json.Marshal(blockFS)
 	if err != nil {
-		return Hash{}, fmt.Errorf("error while marshalling BlockFS to json: %w", err)
+		return Hash{}, err
 	}
 
 	fmt.Println("Persisting new Block to disk:")
-	fmt.Printf("\t%s\n", blockFsJSON)
+	fmt.Printf("%s\n", blockFSJSON)
 
-	if _, err = s.dbFile.Write(append(blockFsJSON, '\n')); err != nil {
-		return Hash{}, fmt.Errorf("error while writing to disk: %w", err)
+	_, err = s.dbFile.Write(append(blockFSJSON, '\n'))
+	if err != nil {
+		return Hash{}, err
 	}
 
+	s.Balances = pendingState.Balances
 	s.latestBlockHash = blockHash
+	s.latestBlock = b
+	s.hasGenesisBlock = true
 
-	s.txMempool = []Tx{}
+	return blockHash, nil
+}
 
-	return s.latestBlockHash, nil
+// applyBlock verfies if block can be added to blockchain
+// Block meta data are verfied as well as transactions within (sufficient balances) etc
+func applyBlock(b Block, s State) error {
+	nextExpectedBlockNumber := s.latestBlock.Header.Number + 1
+
+	if s.hasGenesisBlock && b.Header.Number != nextExpectedBlockNumber {
+		return fmt.Errorf("next expected block must be '%d' not '%d'", nextExpectedBlockNumber, b.Header.Number)
+	}
+
+	if s.hasGenesisBlock && s.latestBlock.Header.Number > 0 && !reflect.DeepEqual(b.Header.Parent, s.latestBlockHash) {
+		return fmt.Errorf("next block parent hash must be '%x' not '%x'", s.latestBlockHash, b.Header.Parent)
+	}
+
+	return applyTXs(b.TXs, &s)
+}
+
+func applyTXs(txs []Tx, s *State) error {
+	for _, tx := range txs {
+		if err := applyTx(tx, s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func applyTx(tx Tx, state *State) error {
+	if tx.IsReward() {
+		state.Balances[tx.To] = state.Balances[tx.To] + tx.Value
+		return nil
+	}
+
+	if tx.Value > state.Balances[tx.From] {
+		return fmt.Errorf("Invalid transaction. Sender '%s' balance is %d TBB. Tx cost is %d TBB", tx.From, state.Balances[tx.From], tx.Value)
+	}
+
+	state.Balances[tx.From] = state.Balances[tx.From] - tx.Value
+	state.Balances[tx.To] = state.Balances[tx.To] + tx.Value
+
+	return nil
+}
+
+func (s *State) copy() State {
+	c := State{}
+	c.hasGenesisBlock = s.hasGenesisBlock
+	c.latestBlock = s.latestBlock
+	c.latestBlockHash = s.latestBlockHash
+	c.txMempool = make([]Tx, len(s.txMempool))
+	c.Balances = make(map[Account]uint)
+
+	for acc, balance := range s.Balances {
+		c.Balances[acc] = balance
+	}
+
+	for _, tx := range s.txMempool {
+		c.txMempool = append(c.txMempool, tx)
+	}
+
+	return c
+}
+
+func (s *State) NextBlockNumber() uint64 {
+	if !s.hasGenesisBlock {
+		return uint64(0)
+	}
+
+	return s.LatestBlock().Header.Number + 1
+}
+
+func (s *State) LatestBlock() Block {
+	return s.latestBlock
 }
 
 func (s *State) LatestBlockHash() Hash {
