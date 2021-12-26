@@ -164,7 +164,7 @@ func applyTx(tx Tx, state *State) error {
 	}
 
 	if tx.Value > state.Balances[tx.From] {
-		return fmt.Errorf("Invalid transaction. Sender '%s' balance is %d TBB. Tx cost is %d TBB", tx.From, state.Balances[tx.From], tx.Value)
+		return fmt.Errorf("invalid transaction. Sender '%s' balance is %d TBB. Tx cost is %d TBB", tx.From, state.Balances[tx.From], tx.Value)
 	}
 
 	state.Balances[tx.From] = state.Balances[tx.From] - tx.Value
