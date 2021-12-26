@@ -17,7 +17,11 @@ func runCmd() *cobra.Command {
 
 			fmt.Println("Launching TBB node and its HTTP API....")
 
-			err := node.Run(dataDir)
+			bootstrap := node.NewPeerNode("locahost", 8001, true, true)
+
+			n := node.New(dataDir, 8000, bootstrap)
+
+			err := n.Run()
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -26,6 +30,7 @@ func runCmd() *cobra.Command {
 	}
 
 	addDefaultRequiredFlags(runCmd)
+	runCmd.Flags().Uint64(flagPort, node.DefaultHTTPPort, "exposed HTTP port for communication with peers")
 
 	return runCmd
 }

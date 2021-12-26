@@ -9,6 +9,7 @@ import (
 )
 
 const flagDataDir = "datadir"
+const flagPort = "port"
 
 func incorrectUsageErr() error {
 	return fmt.Errorf("incorrect usage")
