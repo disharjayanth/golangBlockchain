@@ -1,6 +1,9 @@
 package node
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -28,9 +31,9 @@ type TxAddRes struct {
 }
 
 type StatusRes struct {
-	Hash       database.Hash `json:"block_hash"`
-	Number     uint64        `json:"block_number"`
-	KnownPeers []PeerNode    `json:"peer_known"`
+	Hash       database.Hash       `json:"block_hash"`
+	Number     uint64              `json:"block_number"`
+	KnownPeers map[string]PeerNode `json:"peer_known"`
 }
 
 func listBalancesHandler(w http.ResponseWriter, r *http.Request, state *database.State) {
@@ -66,4 +69,19 @@ func statusHandler(w http.ResponseWriter, r *http.Request, node *Node) {
 	}
 
 	writeRes(w, res)
+}
+
+func readRes(r *http.Response, reqBody interface{}) error {
+	reqBodyJson, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return fmt.Errorf("error while reading response body in readRes func: %w", err)
+	}
+	defer r.Body.Close()
+
+	err = json.Unmarshal(reqBodyJson, reqBody)
+	if err != nil {
+		return fmt.Errorf("error while unmarshalling response body in readRes func: %w", err)
+	}
+
+	return nil
 }
