@@ -40,8 +40,6 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 		return nil, err
 	}
 
-	scanner := bufio.NewScanner(f)
-
 	state := &State{
 		Balances:  balances,
 		txMempool: make([]Tx, 0),
@@ -51,6 +49,8 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 		latestBlockHash: Hash{},
 		hasGenesisBlock: false,
 	}
+
+	scanner := bufio.NewScanner(f)
 
 	for scanner.Scan() {
 		if err := scanner.Err(); err != nil {
