@@ -17,7 +17,7 @@ func runCmd() *cobra.Command {
 
 			fmt.Println("Launching TBB node and its HTTP API....")
 
-			bootstrap := node.NewPeerNode("locahost", 8001, true, true)
+			bootstrap := node.NewPeerNode(getDataDirFromCmd(cmd), 8001, true, true)
 
 			n := node.New(dataDir, 8000, bootstrap)
 

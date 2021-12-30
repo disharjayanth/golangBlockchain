@@ -10,6 +10,8 @@ import (
 
 const DefaultHTTPPort = 8000
 const endPointStatus = "/node/status"
+const endPointSync = "/node/sync"
+const endPointSyncQueryKeyFromBlock = "fromBlock"
 
 type PeerNode struct {
 	IP          string `json:"ip"`
@@ -78,6 +80,10 @@ func (n *Node) Run() error {
 
 	http.HandleFunc(endPointStatus, func(w http.ResponseWriter, r *http.Request) {
 		statusHandler(w, r, n)
+	})
+
+	http.HandleFunc(endPointSync, func(w http.ResponseWriter, r *http.Request) {
+		syncHandler(w, r, n.dataDir)
 	})
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", n.port), nil)

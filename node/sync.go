@@ -22,6 +22,15 @@ func (n *Node) sync(ctx context.Context) error {
 	}
 }
 
+func (n *Node) doSync() {
+	for _, peer := range n.knownPeers {
+		status, err := queryPeerStatus(peer)
+		err = n.joinKnownPeers(peer)
+		err = n.syncBlocks(peer)
+		err = n.syncKnownPeers(peer)
+	}
+}
+
 func (n *Node) fetchNewBlocksAndPeers() {
 	for _, peer := range n.knownPeers {
 		status, err := queryPeerStatus(peer)
