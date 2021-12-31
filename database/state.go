@@ -36,7 +36,9 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 		balances[account] = balance
 	}
 
-	f, err := os.OpenFile(getBlockDBFilePath(dataDir), os.O_APPEND|os.O_RDWR, 0600)
+	dbFilePath := getBlockDBFilePath(dataDir)
+
+	f, err := os.OpenFile(dbFilePath, os.O_APPEND|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +219,7 @@ func (s *State) Persist() (Hash, error) {
 		return Hash{}, err
 	}
 
-	s.latestBlockHash = latestBlockHash
+	s.latestBlockHash = blockHash
 	s.latestBlock = block
 	s.txMempool = []Tx{}
 
