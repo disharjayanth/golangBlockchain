@@ -52,6 +52,7 @@ func (n *Node) doSync() {
 			continue
 		}
 
+		// sync peers with current node
 		err = n.syncKnownPeers(peer, status)
 		if err != nil {
 			fmt.Printf("error in doSync func when sync known peers: %s\n", err)
