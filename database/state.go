@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"time"
 )
 
 type State struct {
@@ -193,37 +192,6 @@ func (s *State) copy() State {
 	}
 
 	return c
-}
-
-func (s *State) Persist() (Hash, error) {
-	latestBlockHash, err := s.latestBlock.Hash()
-	if err != nil {
-		return Hash{}, err
-	}
-
-	block := NewBlock(latestBlockHash, s.latestBlock.Header.Number+1, uint64(time.Now().Unix()), s.txMempool)
-	blockHash, err := block.Hash()
-	if err != nil {
-		return Hash{}, err
-	}
-
-	blockFs := BlockFS{blockHash, block}
-	blockFsJson, err := json.Marshal(blockFs)
-	if err != nil {
-		return Hash{}, err
-	}
-
-	fmt.Printf("Persisting new Block to disk:\n")
-	fmt.Printf("\t%s\n", blockFsJson)
-	if _, err = s.dbFile.Write(append(blockFsJson, '\n')); err != nil {
-		return Hash{}, err
-	}
-
-	s.latestBlockHash = blockHash
-	s.latestBlock = block
-	s.txMempool = []Tx{}
-
-	return latestBlockHash, nil
 }
 
 func (s *State) NextBlockNumber() uint64 {

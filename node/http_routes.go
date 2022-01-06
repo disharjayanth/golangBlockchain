@@ -60,7 +60,7 @@ func txAddHandler(w http.ResponseWriter, r *http.Request, state *database.State)
 
 	tx := database.NewTx(database.NewAccount(req.From), database.NewAccount(req.To), req.Value, req.Data)
 
-	block := database.NewBlock(state.LatestBlockHash(), state.NextBlockNumber(), uint64(time.Now().Unix()), []database.Tx{tx})
+	block := database.NewBlock(state.LatestBlockHash(), state.NextBlockNumber(), 1, uint64(time.Now().Unix()), []database.Tx{tx})
 
 	hash, err := state.AddBlock(block)
 	if err != nil {
