@@ -33,13 +33,21 @@ type TxAddReq struct {
 }
 
 type TxAddRes struct {
-	Hash database.Hash `json:"block_hash"`
+	// return confirmation not block hash because
+	// the mining takes sometime several minutes
+	// and the TX should be distributed to all nodes
+	// so everyone has equal chance of mining the block
+	Success bool `json:"success"`
 }
 
 type StatusRes struct {
 	Hash       database.Hash       `json:"block_hash"`
 	Number     uint64              `json:"block_number"`
 	KnownPeers map[string]PeerNode `json:"peer_known"`
+
+	// exchange pending TXs as part of the periodic
+	// Sync() interval
+	PendingTXs []database.Tx `json:"pending_txs"`
 }
 
 type SyncRes struct {
@@ -62,13 +70,13 @@ func txAddHandler(w http.ResponseWriter, r *http.Request, state *database.State)
 
 	block := database.NewBlock(state.LatestBlockHash(), state.NextBlockNumber(), 1, uint64(time.Now().Unix()), []database.Tx{tx})
 
-	hash, err := state.AddBlock(block)
+	_, err = state.AddBlock(block)
 	if err != nil {
 		writeErrRes(w, err)
 		return
 	}
 
-	writeRes(w, TxAddRes{Hash: hash})
+	writeRes(w, TxAddRes{Success: true})
 }
 
 func statusHandler(w http.ResponseWriter, r *http.Request, node *Node) {
