@@ -7,16 +7,6 @@ import (
 	"strings"
 )
 
-func homeDir() string {
-	if home := os.Getenv("HOME"); home != "" {
-		return home
-	}
-	if user, err := user.Current(); err == nil {
-		return user.Username
-	}
-	return ""
-}
-
 // Expands a file path
 // 1. replace tidle with users home dir
 // 2. expands embedded environment variables
@@ -38,4 +28,18 @@ func ExpandPath(p string) string {
 	}
 
 	return path.Clean(os.ExpandEnv(p))
+}
+
+func RemoveDir(path string) error {
+	return os.RemoveAll(path)
+}
+
+func homeDir() string {
+	if home := os.Getenv("HOME"); home != "" {
+		return home
+	}
+	if user, err := user.Current(); err == nil {
+		return user.Username
+	}
+	return ""
 }

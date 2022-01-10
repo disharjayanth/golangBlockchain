@@ -11,6 +11,7 @@ import (
 const flagDataDir = "datadir"
 const flagIP = "ip"
 const flagPort = "port"
+const flagMiner = "miner"
 
 func incorrectUsageErr() error {
 	return fmt.Errorf("incorrect usage")

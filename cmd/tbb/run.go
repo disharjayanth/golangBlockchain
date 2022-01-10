@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/disharjayanth/golangBlockchain/database"
 	"github.com/disharjayanth/golangBlockchain/node"
 	"github.com/spf13/cobra"
 )
@@ -15,13 +17,16 @@ func runCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			ip, _ := cmd.Flags().GetString(flagIP)
 			port, _ := cmd.Flags().GetUint64(flagPort)
+
+			miner, _ := cmd.Flags().GetString(flagMiner)
+
 			fmt.Println("Launching TBB node and its HTTP API....")
 
 			bootstrap := node.NewPeerNode("localhost", 8000, true, false)
 
-			n := node.New(getDataDirFromCmd(cmd), ip, port, bootstrap)
+			n := node.New(getDataDirFromCmd(cmd), ip, port, database.NewAccount(miner), bootstrap)
 
-			err := n.Run()
+			err := n.Run(context.Background())
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)

@@ -9,8 +9,7 @@ import (
 )
 
 type State struct {
-	Balances  map[Account]uint
-	txMempool []Tx
+	Balances map[Account]uint
 
 	dbFile *os.File
 
@@ -43,8 +42,7 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 	}
 
 	state := &State{
-		Balances:  balances,
-		txMempool: make([]Tx, 0),
+		Balances: balances,
 
 		dbFile:          f,
 		latestBlock:     Block{},
@@ -147,6 +145,15 @@ func applyBlock(b Block, s State) error {
 		return fmt.Errorf("next block parent hash must be '%x' not '%x'", s.latestBlockHash, b.Header.Parent)
 	}
 
+	hash, err := b.Hash()
+	if err != nil {
+		return err
+	}
+
+	if !IsBlockHashValid(hash) {
+		return fmt.Errorf("invalid block %x", hash)
+	}
+
 	return applyTXs(b.TXs, &s)
 }
 
@@ -180,15 +187,10 @@ func (s *State) copy() State {
 	c.hasGenesisBlock = s.hasGenesisBlock
 	c.latestBlock = s.latestBlock
 	c.latestBlockHash = s.latestBlockHash
-	c.txMempool = make([]Tx, len(s.txMempool))
 	c.Balances = make(map[Account]uint)
 
 	for acc, balance := range s.Balances {
 		c.Balances[acc] = balance
-	}
-
-	for _, tx := range s.txMempool {
-		c.txMempool = append(c.txMempool, tx)
 	}
 
 	return c

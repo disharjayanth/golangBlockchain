@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/disharjayanth/golangBlockchain/database"
 )
@@ -58,7 +57,7 @@ func listBalancesHandler(w http.ResponseWriter, r *http.Request, state *database
 	writeRes(w, BalancesRes{state.LatestBlockHash(), state.Balances})
 }
 
-func txAddHandler(w http.ResponseWriter, r *http.Request, state *database.State) {
+func txAddHandler(w http.ResponseWriter, r *http.Request, node *Node) {
 	req := TxAddReq{}
 	err := readReq(r, &req)
 	if err != nil {
@@ -68,9 +67,8 @@ func txAddHandler(w http.ResponseWriter, r *http.Request, state *database.State)
 
 	tx := database.NewTx(database.NewAccount(req.From), database.NewAccount(req.To), req.Value, req.Data)
 
-	block := database.NewBlock(state.LatestBlockHash(), state.NextBlockNumber(), 1, uint64(time.Now().Unix()), []database.Tx{tx})
+	err = node.AddPendingTX(tx, node.info)
 
-	_, err = state.AddBlock(block)
 	if err != nil {
 		writeErrRes(w, err)
 		return
@@ -84,6 +82,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request, node *Node) {
 		Hash:       node.state.LatestBlockHash(),
 		Number:     node.state.LatestBlock().Header.Number,
 		KnownPeers: node.knownPeers,
+		PendingTXs: node.getPendingTXsAsArray(),
 	}
 
 	writeRes(w, res)
