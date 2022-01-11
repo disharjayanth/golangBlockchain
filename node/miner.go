@@ -14,11 +14,12 @@ type PendingBlock struct {
 	parent database.Hash
 	number uint64
 	time   uint64
+	miner  database.Account
 	txs    []database.Tx
 }
 
-func NewPendingBlock(parent database.Hash, number uint64, txs []database.Tx) PendingBlock {
-	return PendingBlock{parent, number, uint64(time.Now().Unix()), txs}
+func NewPendingBlock(parent database.Hash, number uint64, miner database.Account, txs []database.Tx) PendingBlock {
+	return PendingBlock{parent, number, uint64(time.Now().Unix()), miner, txs}
 }
 
 func Mine(ctx context.Context, pb PendingBlock) (database.Block, error) {
@@ -30,7 +31,7 @@ func Mine(ctx context.Context, pb PendingBlock) (database.Block, error) {
 	attempt := 0
 	var block database.Block
 	var hash database.Hash
-	var nonce uint64
+	var nonce uint32
 
 	for !database.IsBlockHashValid(hash) {
 		select {
@@ -41,13 +42,13 @@ func Mine(ctx context.Context, pb PendingBlock) (database.Block, error) {
 		}
 
 		attempt++
-		nonce := generateNonce()
+		nonce = generateNonce()
 
 		if attempt%1000000 == 0 || attempt == 1 {
 			fmt.Printf("Mining %d Pending Txs. Attempt:%d\n", len(pb.txs), attempt)
 		}
 
-		block = database.NewBlock(pb.parent, pb.number, nonce, pb.time, pb.txs)
+		block = database.NewBlock(pb.parent, pb.number, nonce, pb.time, pb.miner, pb.txs)
 		blockHash, err := block.Hash()
 		if err != nil {
 			return database.Block{}, fmt.Errorf("couldn't mine block. %s", err.Error())
@@ -57,10 +58,11 @@ func Mine(ctx context.Context, pb PendingBlock) (database.Block, error) {
 	}
 
 	fmt.Printf("\nMined new block '%x' using Pow %s\n", hash, fs.Unicode("\\U1F389"))
-	fmt.Printf("\tHeight: '%v'\n", pb.number)
-	fmt.Printf("\tNonce: '%v'\n", nonce)
-	fmt.Printf("\tCreated: '%v'\n", pb.time)
-	fmt.Printf("\tParent: '%v'\n", pb.parent.Hex())
+	fmt.Printf("\tHeight: '%v'\n", block.Header.Number)
+	fmt.Printf("\tNonce: '%v'\n", block.Header.Nonce)
+	fmt.Printf("\tCreated: '%v'\n", block.Header.Time)
+	fmt.Printf("\tMiner: '%v'\n", block.Header.Miner)
+	fmt.Printf("\tParent: '%v'\n", block.Header.Parent.Hex())
 
 	fmt.Printf("\tAttempt: '%v'\n", attempt)
 	fmt.Printf("\tTime: %s\n", time.Since(start))

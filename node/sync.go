@@ -10,7 +10,7 @@ import (
 )
 
 func (n *Node) sync(ctx context.Context) error {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(45 * time.Second)
 
 	for {
 		select {
@@ -26,7 +26,7 @@ func (n *Node) sync(ctx context.Context) error {
 
 func (n *Node) doSync() {
 	for _, peer := range n.knownPeers {
-		if n.ip == peer.IP && n.port == peer.Port {
+		if n.info.IP == peer.IP && n.info.Port == peer.Port {
 			continue
 		}
 
@@ -53,9 +53,15 @@ func (n *Node) doSync() {
 		}
 
 		// sync peers with current node
-		err = n.syncKnownPeers(peer, status)
+		err = n.syncKnownPeers(status)
 		if err != nil {
 			fmt.Printf("error in doSync func when sync known peers: %s\n", err)
+			continue
+		}
+
+		err = n.syncPendingTXs(peer, status.PendingTXs)
+		if err != nil {
+			fmt.Printf("error in syncPendingTXs func: %s\n", err)
 			continue
 		}
 	}
@@ -64,42 +70,61 @@ func (n *Node) doSync() {
 func (n *Node) syncBlocks(peer PeerNode, status StatusRes) error {
 	localBlockNumber := n.state.LatestBlock().Header.Number
 
-	// if peer has no block ignore it
+	// If the peer has no blocks, ignore it
 	if status.Hash.IsEmpty() {
 		return nil
 	}
 
-	// If peer has less blocks than current node ignore it
+	// If the peer has less blocks than us, ignore it
 	if status.Number < localBlockNumber {
 		return nil
 	}
 
-	// if it's genesis block and we already synced it, ignore it
+	// If it's the genesis block and we already synced it, ignore it
 	if status.Number == 0 && !n.state.LatestBlockHash().IsEmpty() {
 		return nil
 	}
 
-	newBlockCount := status.Number - localBlockNumber
-
+	// Display found 1 new block if we sync the genesis block 0
+	newBlocksCount := status.Number - localBlockNumber
 	if localBlockNumber == 0 && status.Number == 0 {
-		newBlockCount = 1
+		newBlocksCount = 1
 	}
-
-	fmt.Printf("Found %d new blocks from Peer %s\n", newBlockCount, peer.TcpAddress())
+	fmt.Printf("Found %d new blocks from Peer %s\n", newBlocksCount, peer.TcpAddress())
 
 	blocks, err := fetchBlocksFromPeer(peer, n.state.LatestBlockHash())
 	if err != nil {
 		return err
 	}
 
-	return n.state.AddBlocks(blocks)
+	for _, block := range blocks {
+		_, err = n.state.AddBlock(block)
+		if err != nil {
+			return err
+		}
+
+		n.newSyncedBlocks <- block
+	}
+
+	return nil
 }
 
-func (n *Node) syncKnownPeers(peer PeerNode, status StatusRes) error {
+func (n *Node) syncKnownPeers(status StatusRes) error {
 	for _, statusPeer := range status.KnownPeers {
 		if !n.IsKnownPeer(statusPeer) {
 			fmt.Printf("Found new Peer %s\n", statusPeer.TcpAddress())
 			n.AddPeer(statusPeer)
+		}
+	}
+
+	return nil
+}
+
+func (n *Node) syncPendingTXs(peer PeerNode, txs []database.Tx) error {
+	for _, tx := range txs {
+		err := n.AddPendingTX(tx, peer)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -115,9 +140,9 @@ func (n *Node) joinKnownPeers(peer PeerNode) error {
 		peer.TcpAddress(),
 		endPointAddPeer,
 		endPointAddPeerQueryKeyIP,
-		n.ip,
+		n.info.IP,
 		endPointAddPeerQueryKeyPort,
-		n.port,
+		n.info.Port,
 	)
 
 	res, err := http.Get(url)

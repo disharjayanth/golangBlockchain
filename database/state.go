@@ -69,7 +69,7 @@ func NewStateFromDisk(dataDir string) (*State, error) {
 			return nil, fmt.Errorf("error while unmarshalling JSON to blockFS struct: %w", err)
 		}
 
-		err = applyTXs(blockFS.Value.TXs, state)
+		err = applyBlock(blockFS.Value, state)
 		if err != nil {
 			return nil, fmt.Errorf("error while calculating balances: %w", err)
 		}
@@ -95,7 +95,7 @@ func (s *State) AddBlocks(blocks []Block) error {
 
 func (s *State) AddBlock(b Block) (Hash, error) {
 	pendingState := s.copy()
-	err := applyBlock(b, pendingState)
+	err := applyBlock(b, &pendingState)
 	if err != nil {
 		return Hash{}, err
 	}
@@ -134,7 +134,7 @@ func (s *State) AddBlock(b Block) (Hash, error) {
 
 // applyBlock verfies if block can be added to blockchain
 // Block meta data are verfied as well as transactions within (sufficient balances) etc
-func applyBlock(b Block, s State) error {
+func applyBlock(b Block, s *State) error {
 	nextExpectedBlockNumber := s.latestBlock.Header.Number + 1
 
 	if s.hasGenesisBlock && b.Header.Number != nextExpectedBlockNumber {
@@ -154,7 +154,14 @@ func applyBlock(b Block, s State) error {
 		return fmt.Errorf("invalid block %x", hash)
 	}
 
-	return applyTXs(b.TXs, &s)
+	err = applyTXs(b.TXs, s)
+	if err != nil {
+		return err
+	}
+
+	s.Balances[b.Header.Miner] += BlockReward
+
+	return nil
 }
 
 func applyTXs(txs []Tx, s *State) error {
@@ -167,11 +174,6 @@ func applyTXs(txs []Tx, s *State) error {
 }
 
 func applyTx(tx Tx, state *State) error {
-	if tx.IsReward() {
-		state.Balances[tx.To] = state.Balances[tx.To] + tx.Value
-		return nil
-	}
-
 	if tx.Value > state.Balances[tx.From] {
 		return fmt.Errorf("invalid transaction. Sender '%s' balance is %d TBB. Tx cost is %d TBB", tx.From, state.Balances[tx.From], tx.Value)
 	}
