@@ -79,7 +79,7 @@ func NewPeerNode(ip string, port uint64, isBootstrap bool, account database.Acco
 }
 
 func (n *Node) Run(ctx context.Context) error {
-	fmt.Println("Listening on: ", n.info.IP, n.info.Port)
+	fmt.Println(fmt.Sprintf("Listening on: %s:%d", n.info.IP, n.info.Port))
 
 	state, err := database.NewStateFromDisk(n.dataDir)
 	if err != nil {
@@ -90,8 +90,8 @@ func (n *Node) Run(ctx context.Context) error {
 	n.state = state
 
 	fmt.Println("Blockchain state:")
-	fmt.Printf("    -height: %d\n", n.state.LatestBlock().Header.Number)
-	fmt.Printf("    -height: %d\n", n.state.LatestBlockHash().Hex())
+	fmt.Printf("	- height: %d\n", n.state.LatestBlock().Header.Number)
+	fmt.Printf("	- hash: %s\n", n.state.LatestBlockHash().Hex())
 
 	go n.sync(ctx)
 	go n.mine(ctx)
@@ -125,7 +125,7 @@ func (n *Node) Run(ctx context.Context) error {
 
 	err = server.ListenAndServe()
 	// This shouldn't be an error!
-	if err != http.ErrServerClosed {
+	if err == http.ErrServerClosed {
 		return err
 	}
 

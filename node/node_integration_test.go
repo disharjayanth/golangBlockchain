@@ -17,7 +17,9 @@ func TestNode_Run(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := New(datadir, "127.0.0.1", 8085, database.NewAccount("andrej"), PeerNode{})
+
+	n := New(datadir, "127.0.0.1", 8000, database.NewAccount("andrej"), PeerNode{})
+
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
 	err = n.Run(ctx)
 	if err.Error() != "http: Server closed" {
